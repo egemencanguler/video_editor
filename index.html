@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Editor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Toolbar -->
+    <header class="toolbar">
+        <div class="toolbar-left">
+            <span class="app-title">Video Editor</span>
+        </div>
+        <div class="toolbar-center">
+            <label>
+                Resolution:
+                <select id="resolution-select">
+                    <optgroup label="Portrait (9:16)">
+                        <option value="1080x1920">TikTok / Reels / Shorts (1080x1920)</option>
+                        <option value="720x1280">Portrait 720p (720x1280)</option>
+                    </optgroup>
+                    <optgroup label="Square (1:1)">
+                        <option value="1080x1080">Instagram Post (1080x1080)</option>
+                        <option value="720x720">Square 720p (720x720)</option>
+                    </optgroup>
+                    <optgroup label="Portrait (4:5)">
+                        <option value="1080x1350">Instagram Portrait (1080x1350)</option>
+                    </optgroup>
+                    <optgroup label="Landscape (16:9)">
+                        <option value="1920x1080" selected>YouTube / HD (1920x1080)</option>
+                        <option value="1280x720">720p (1280x720)</option>
+                        <option value="2560x1440">YouTube 1440p (2560x1440)</option>
+                        <option value="3840x2160">4K (3840x2160)</option>
+                    </optgroup>
+                    <optgroup label="Twitter / X">
+                        <option value="1200x675">Twitter Landscape (1200x675)</option>
+                        <option value="1080x1080">Twitter Square (1080x1080)</option>
+                        <option value="1080x1920">Twitter Vertical (1080x1920)</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                        <option value="custom">Custom...</option>
+                    </optgroup>
+                </select>
+            </label>
+            <div id="custom-resolution" class="custom-resolution hidden">
+                <input type="number" id="custom-width" min="100" max="7680" value="1920" placeholder="W">
+                <span>x</span>
+                <input type="number" id="custom-height" min="100" max="4320" value="1080" placeholder="H">
+                <button id="apply-custom-res">Apply</button>
+            </div>
+            <label>
+                FPS:
+                <select id="fps-select">
+                    <option value="24">24</option>
+                    <option value="30" selected>30</option>
+                    <option value="60">60</option>
+                </select>
+            </label>
+        </div>
+        <div class="toolbar-right">
+            <button id="export-btn" class="btn-primary">Export MP4</button>
+        </div>
+    </header>
+
+    <!-- Preview Area -->
+    <section class="preview-area">
+        <div class="canvas-wrapper">
+            <canvas id="preview-canvas" width="1920" height="1080"></canvas>
+            <div class="resolution-badge" id="resolution-badge">1920 x 1080</div>
+            <div id="empty-state" class="empty-state">
+                <div class="empty-state-icon">&#128247;</div>
+                <p>Drag &amp; drop images and audio files here</p>
+                <p class="empty-state-sub">Supports JPEG, PNG, WebP, GIF, BMP, SVG, AVIF, MP3, WAV, OGG, AAC, FLAC, M4A</p>
+                <button id="add-files-btn-empty" class="btn-secondary">Or click to browse files</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Transport Controls -->
+    <section class="transport-bar">
+        <div class="transport-left">
+            <button id="play-btn" class="transport-btn" title="Play (Space)">&#9654;</button>
+            <button id="stop-btn" class="transport-btn" title="Stop">&#9632;</button>
+            <span id="time-display" class="time-display">0:00.0 / 0:00.0</span>
+        </div>
+        <div class="transport-right">
+            <button id="add-files-btn" class="btn-secondary">+ Add Files</button>
+            <input type="file" id="file-input" multiple accept="image/*,audio/*,.mp3,.wav,.ogg,.aac,.flac,.m4a,.avif,.webp,.bmp,.svg" hidden>
+        </div>
+    </section>
+
+    <!-- Timeline -->
+    <section class="timeline-section">
+        <div class="timeline-header">
+            <div class="track-label">Images</div>
+            <div class="timeline-zoom">
+                <label>Zoom: <input type="range" id="zoom-slider" min="20" max="200" value="80"></label>
+            </div>
+        </div>
+        <div class="timeline-scroll" id="timeline-scroll">
+            <div class="timeline-tracks" id="timeline-tracks">
+                <!-- Playhead -->
+                <div class="playhead" id="playhead"></div>
+                <!-- Image track -->
+                <div class="track image-track" id="image-track"></div>
+                <!-- Audio track -->
+                <div class="track audio-track" id="audio-track">
+                    <div class="track-label-inline">Audio</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Properties Panel -->
+    <section class="properties-panel" id="properties-panel">
+        <div class="properties-empty" id="properties-empty">Select a clip to edit its properties</div>
+        <div class="properties-content hidden" id="properties-content">
+            <h3 id="prop-clip-name">clip.jpg</h3>
+            <div class="prop-group" id="prop-image-group">
+                <label>
+                    Duration (s):
+                    <input type="number" id="prop-duration" min="0.1" max="300" step="0.1" value="3.0">
+                </label>
+                <label>
+                    Scale Mode:
+                    <select id="prop-scale-mode">
+                        <optgroup label="Fit (show full image)">
+                            <option value="fit">Fit — Center</option>
+                            <option value="fit-top">Fit — Top</option>
+                            <option value="fit-bottom">Fit — Bottom</option>
+                        </optgroup>
+                        <optgroup label="Fill (crop to cover)">
+                            <option value="fill">Fill — Center</option>
+                            <option value="fill-top">Fill — Top</option>
+                            <option value="fill-bottom">Fill — Bottom</option>
+                        </optgroup>
+                        <optgroup label="Special">
+                            <option value="blur-fill">Blur Fill (blurred bg + sharp fg)</option>
+                            <option value="stretch">Stretch to fit</option>
+                            <option value="custom">Custom scale</option>
+                        </optgroup>
+                    </select>
+                </label>
+                <label class="custom-scale-label hidden" id="custom-scale-group">
+                    Scale (%):
+                    <input type="range" id="prop-custom-scale" min="10" max="300" value="100">
+                    <span id="prop-custom-scale-value">100%</span>
+                </label>
+            </div>
+            <div class="prop-group hidden" id="prop-audio-group">
+                <label>
+                    Volume:
+                    <input type="range" id="prop-volume" min="0" max="100" value="100">
+                    <span id="prop-volume-value">100%</span>
+                </label>
+            </div>
+            <button id="prop-delete-btn" class="btn-danger">Delete</button>
+        </div>
+    </section>
+
+    <!-- Drop Overlay -->
+    <div class="drop-overlay hidden" id="drop-overlay">
+        <div class="drop-overlay-content">
+            <div class="drop-icon">&#128229;</div>
+            <p>Drop files here</p>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-overlay hidden" id="export-modal">
+        <div class="modal-content">
+            <h3>Exporting Video...</h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="export-progress-bar"></div>
+            </div>
+            <p id="export-progress-text">0%</p>
+            <p id="export-status-text"></p>
+        </div>
+    </div>
+
+    <!-- Browser Warning -->
+    <div class="modal-overlay hidden" id="browser-warning">
+        <div class="modal-content">
+            <h3>Browser Not Supported</h3>
+            <p>This video editor requires the WebCodecs API, which is available in Chrome 94+, Edge 94+, and other Chromium-based browsers.</p>
+            <p>Please open this page in a supported browser to use the export feature.</p>
+            <button id="dismiss-warning" class="btn-secondary">Continue Anyway</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
