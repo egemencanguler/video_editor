@@ -8,7 +8,7 @@ const state = {
     audioTracks: [],
     selectedId: null,
     selectedType: null, // 'clip' | 'audio'
-    resolution: { width: 1920, height: 1080 },
+    resolution: { width: 1080, height: 1920 },
     fps: 30,
     isPlaying: false,
     playbackTime: 0,
@@ -23,7 +23,8 @@ const imageTrack = $('#image-track');
 const audioTrack = $('#audio-track');
 const playhead = $('#playhead');
 const timelineScroll = $('#timeline-scroll');
-const timelineTracks = $('#timeline-tracks');
+const timelineContent = $('#timeline-content');
+const timeRuler = $('#time-ruler');
 const emptyState = $('#empty-state');
 const dropOverlay = $('#drop-overlay');
 const exportModal = $('#export-modal');
@@ -170,7 +171,7 @@ async function addImageClip(file) {
     tctx.drawImage(img, (80 - tw) / 2, (50 - th) / 2, tw, th);
 
     state.clips.push({
-        id: crypto.randomUUID(),
+        id: generateId(),
         file,
         name: file.name,
         image: img,
@@ -197,7 +198,7 @@ async function addAudioTrack(file) {
     audioCtx.close();
 
     state.audioTracks.push({
-        id: crypto.randomUUID(),
+        id: generateId(),
         file,
         name: file.name,
         audioBuffer,
@@ -219,10 +220,47 @@ function updateEmptyState() {
 // Timeline Rendering
 // ============================================================
 function renderTimeline() {
+    renderRuler();
     renderImageTrack();
     renderAudioTrackUI();
     updateTimelineTotalWidth();
     updatePlayhead(state.playbackTime);
+}
+
+function renderRuler() {
+    timeRuler.innerHTML = '';
+    const pps = state.pixelsPerSecond;
+    const totalImageTime = getTotalDuration();
+    const maxAudioEnd = state.audioTracks.reduce((max, t) => Math.max(max, t.startOffset + t.duration), 0);
+    const totalTime = Math.max(totalImageTime, maxAudioEnd, 5);
+
+    // Determine tick interval based on zoom level
+    let majorInterval, minorInterval;
+    if (pps >= 100) {
+        majorInterval = 1; minorInterval = 0.5;
+    } else if (pps >= 40) {
+        majorInterval = 5; minorInterval = 1;
+    } else {
+        majorInterval = 10; minorInterval = 5;
+    }
+
+    for (let t = 0; t <= totalTime + majorInterval; t += minorInterval) {
+        const x = t * pps;
+        const isMajor = Math.abs(t % majorInterval) < 0.01 || Math.abs(t % majorInterval - majorInterval) < 0.01;
+
+        const tick = document.createElement('div');
+        tick.className = 'ruler-tick ' + (isMajor ? 'major' : 'minor');
+        tick.style.left = x + 'px';
+        timeRuler.appendChild(tick);
+
+        if (isMajor) {
+            const label = document.createElement('div');
+            label.className = 'ruler-label';
+            label.style.left = x + 'px';
+            label.textContent = formatTime(t);
+            timeRuler.appendChild(label);
+        }
+    }
 }
 
 function renderImageTrack() {
@@ -269,10 +307,7 @@ function renderImageTrack() {
 }
 
 function renderAudioTrackUI() {
-    // Clear all except the label
-    const label = audioTrack.querySelector('.track-label-inline');
     audioTrack.innerHTML = '';
-    audioTrack.appendChild(label);
 
     const pps = state.pixelsPerSecond;
 
@@ -301,7 +336,7 @@ function updateTimelineTotalWidth() {
     const maxAudioEnd = state.audioTracks.reduce((max, t) => Math.max(max, t.startOffset + t.duration), 0);
     const totalTime = Math.max(totalImageTime, maxAudioEnd, 5);
     const totalWidth = totalTime * state.pixelsPerSecond + 100;
-    timelineTracks.style.width = totalWidth + 'px';
+    timelineContent.style.width = totalWidth + 'px';
 }
 
 // ============================================================
@@ -311,6 +346,7 @@ let dragSourceIndex = -1;
 
 function setupClipDrag(el, clip, index) {
     el.addEventListener('dragstart', (e) => {
+        if (isResizing) { e.preventDefault(); return; }
         internalDragActive = true;
         dragSourceIndex = index;
         e.dataTransfer.effectAllowed = 'move';
@@ -370,30 +406,48 @@ function clearDragIndicators() {
 // ============================================================
 // Clip Resize Handle
 // ============================================================
+let isResizing = false;
+
 function setupResizeHandle(handle, clip) {
-    let startX, startDuration;
-
-    const onMove = (e) => {
-        const dx = e.clientX - startX;
-        const dt = dx / state.pixelsPerSecond;
-        clip.duration = Math.max(0.1, startDuration + dt);
-        renderTimeline();
-        updateTimeDisplay();
-        if (state.selectedType === 'clip' && state.selectedId === clip.id) {
-            propDuration.value = clip.duration.toFixed(1);
-        }
-    };
-
-    const onUp = () => {
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-        renderFrame();
-    };
-
     handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        startX = e.clientX;
-        startDuration = clip.duration;
+        isResizing = true;
+
+        const startX = e.clientX;
+        const startDuration = clip.duration;
+        const clipEl = handle.parentElement;
+        const durationLabel = clipEl.querySelector('.clip-duration');
+
+        // Disable draggable on all clips during resize to prevent native drag interference
+        const allClips = imageTrack.querySelectorAll('.clip');
+        allClips.forEach(c => c.draggable = false);
+
+        const onMove = (e) => {
+            e.preventDefault();
+            const dx = e.clientX - startX;
+            const dt = dx / state.pixelsPerSecond;
+            clip.duration = Math.max(0.1, startDuration + dt);
+
+            // Update only this clip's width and label — don't rebuild the entire timeline
+            clipEl.style.width = Math.max(clip.duration * state.pixelsPerSecond, 30) + 'px';
+            if (durationLabel) durationLabel.textContent = clip.duration.toFixed(1) + 's';
+            updateTimeDisplay();
+
+            if (state.selectedType === 'clip' && state.selectedId === clip.id) {
+                propDuration.value = clip.duration.toFixed(1);
+            }
+        };
+
+        const onUp = () => {
+            isResizing = false;
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            // Full re-render now that resizing is done
+            renderTimeline();
+            renderFrame();
+        };
+
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
     });
@@ -403,16 +457,46 @@ function setupResizeHandle(handle, clip) {
 // Timeline Seek
 // ============================================================
 function setupTimelineSeek() {
-    timelineTracks.addEventListener('mousedown', (e) => {
-        // Only seek if clicking on the track background, not on clips
-        if (e.target !== imageTrack && e.target !== audioTrack && e.target !== timelineTracks) return;
-        const rect = timelineTracks.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const time = Math.max(0, (x - 16) / state.pixelsPerSecond);
-        state.playbackTime = Math.min(time, getTotalDuration());
+    // Helper: compute time from mouse event on timeline content
+    function timeFromEvent(e) {
+        const contentRect = timelineContent.getBoundingClientRect();
+        const x = e.clientX - contentRect.left;
+        const time = Math.max(0, x / state.pixelsPerSecond);
+        return Math.min(time, getTotalDuration());
+    }
+
+    function seekTo(e) {
+        state.playbackTime = timeFromEvent(e);
         updatePlayhead(state.playbackTime);
         updateTimeDisplay();
         renderFrame();
+    }
+
+    // Ruler: click + drag to scrub
+    let isScrubbing = false;
+    timeRuler.addEventListener('mousedown', (e) => {
+        if (isResizing) return;
+        e.preventDefault();
+        isScrubbing = true;
+        seekTo(e);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isScrubbing) return;
+        seekTo(e);
+    });
+
+    document.addEventListener('mouseup', () => {
+        isScrubbing = false;
+    });
+
+    // Track area: click on empty space to seek (not on clips)
+    timelineContent.addEventListener('mousedown', (e) => {
+        if (isResizing) return;
+        if (e.target === timeRuler) return; // handled above
+        if (e.target.closest('.clip')) return; // clicking a clip — don't seek
+        if (e.target.closest('.time-ruler')) return;
+        seekTo(e);
     });
 }
 
@@ -783,7 +867,7 @@ function stopAudioPlayback() {
 // Playhead & Time Display
 // ============================================================
 function updatePlayhead(time) {
-    const x = 16 + time * state.pixelsPerSecond;
+    const x = time * state.pixelsPerSecond;
     playhead.style.left = x + 'px';
 
     // Auto-scroll to keep playhead visible
@@ -825,7 +909,7 @@ async function exportVideo() {
     exportModal.classList.remove('hidden');
     exportProgressBar.style.width = '0%';
     exportProgressText.textContent = '0%';
-    exportStatusText.textContent = 'Encoding video...';
+    exportStatusText.textContent = 'Video kodlanıyor...';
 
     try {
         // Check codec support
@@ -850,7 +934,7 @@ async function exportVideo() {
             if (baselineSupport.supported) {
                 videoCodecString = 'avc1.42001f';
             } else {
-                throw new Error('H.264 encoding not supported by this browser');
+                throw new Error('Bu tarayıcı H.264 kodlamayı desteklemiyor');
             }
         }
 
@@ -961,13 +1045,13 @@ async function exportVideo() {
 
         // Encode audio
         if (hasAudio) {
-            exportStatusText.textContent = 'Encoding audio...';
+            exportStatusText.textContent = 'Ses kodlanıyor...';
             await encodeAudio(muxer, totalDuration, audioCodecString);
         }
 
         exportProgressBar.style.width = '100%';
         exportProgressText.textContent = '100%';
-        exportStatusText.textContent = 'Finalizing...';
+        exportStatusText.textContent = 'Tamamlanıyor...';
         await new Promise(r => setTimeout(r, 50));
 
         muxer.finalize();
@@ -983,14 +1067,14 @@ async function exportVideo() {
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-        exportStatusText.textContent = 'Done! Download started.';
+        exportStatusText.textContent = 'Tamamlandı! İndirme başladı.';
         setTimeout(() => exportModal.classList.add('hidden'), 2000);
 
     } catch (e) {
         console.error('Export failed:', e);
-        exportStatusText.textContent = 'Export failed: ' + e.message;
+        exportStatusText.textContent = 'Dışa aktarma başarısız: ' + e.message;
         exportProgressBar.style.width = '0%';
-        exportProgressText.textContent = 'Error';
+        exportProgressText.textContent = 'Hata';
         setTimeout(() => exportModal.classList.add('hidden'), 4000);
     }
 }
@@ -1108,6 +1192,13 @@ function setupKeyboard() {
 // ============================================================
 // Utilities
 // ============================================================
+function generateId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'id-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 function getTotalDuration() {
     return state.clips.reduce((sum, c) => sum + c.duration, 0);
 }
