@@ -1,0 +1,11 @@
+# Development / build artifacts
+*.ps1
+build.txt
+.gitignore
+
+# logo.png is embedded into logo.js at deploy time, no need to upload the raw file
+logo.png
+
+# Dotfiles and local stuff
+.git
+.claude
