@@ -45,6 +45,13 @@
             </label>
         </div>
         <div class="toolbar-right">
+            <div class="btn-group">
+                <button id="overlay-btn" class="btn-group-item btn-group-main">Kaplama</button>
+                <button id="overlay-toggle-btn" class="btn-group-item btn-group-toggle" title="Kaplamayı aç/kapat">
+                    <span class="toggle-dot"></span>
+                    <span class="toggle-label">Kapalı</span>
+                </button>
+            </div>
             <button id="export-btn" class="btn-primary">MP4 Olarak Dışa Aktar</button>
         </div>
     </header>
@@ -172,6 +179,115 @@
         </div>
     </div>
 
+    <!-- Overlay Modal -->
+    <div class="modal-overlay hidden" id="overlay-modal">
+        <div class="modal-content modal-wide">
+            <h3>Kaplama Ayarları</h3>
+            <div class="overlay-form">
+                <label class="form-row checkbox-row">
+                    <input type="checkbox" id="overlay-enabled">
+                    <span>Kaplama etkin</span>
+                </label>
+
+                <div class="form-section">
+                    <h4>Üst bar (gradient)</h4>
+                    <label class="form-row">
+                        <span>Gradient başlangıç:</span>
+                        <input type="color" id="overlay-header-grad-from" value="#A00000">
+                    </label>
+                    <label class="form-row">
+                        <span>Gradient bitiş:</span>
+                        <input type="color" id="overlay-header-grad-to" value="#5C0A0A">
+                    </label>
+                    <label class="form-row">
+                        <span>Bar yüksekliği:</span>
+                        <input type="range" id="overlay-header-height" min="5" max="30" step="0.5" value="15">
+                        <span id="overlay-header-height-value">15%</span>
+                    </label>
+                </div>
+
+                <div class="form-section">
+                    <h4>Başlık</h4>
+                    <label class="form-row">
+                        <span>Metin:</span>
+                        <input type="text" id="overlay-title-text" value="ANITKABİR DERNEĞİ">
+                    </label>
+                    <label class="form-row">
+                        <span>Renk:</span>
+                        <input type="color" id="overlay-title-color" value="#6B0000">
+                    </label>
+                    <label class="form-row">
+                        <span>Boyut:</span>
+                        <input type="range" id="overlay-title-size" min="1" max="10" step="0.1" value="3">
+                        <span id="overlay-title-size-value">3%</span>
+                    </label>
+                    <label class="form-row">
+                        <span>Yazı tipi:</span>
+                        <select id="overlay-title-font">
+                            <option value="'Georgia', 'Times New Roman', serif" selected>Serif (Georgia)</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="-apple-system, 'Segoe UI', sans-serif">Sans-serif</option>
+                        </select>
+                    </label>
+                    <label class="form-row checkbox-row">
+                        <input type="checkbox" id="overlay-title-bold" checked>
+                        <span>Kalın</span>
+                    </label>
+                </div>
+
+                <div class="form-section">
+                    <h4>Logo (üst barda sol)</h4>
+                    <label class="form-row">
+                        <span>Logo resmi:</span>
+                        <input type="file" id="overlay-logo-file" accept="image/*">
+                    </label>
+                    <p class="form-hint">Logo otomatik olarak üst barın yüksekliğine sığdırılır ve sol kenara hizalanır.</p>
+                </div>
+
+                <div class="form-section">
+                    <h4>Alt yazı (gradient bar)</h4>
+                    <label class="form-row">
+                        <span>Metin:</span>
+                        <input type="text" id="overlay-footer-text" value="https://www.anitkabir.com.tr/">
+                    </label>
+                    <label class="form-row">
+                        <span>Gradient başlangıç:</span>
+                        <input type="color" id="overlay-footer-grad-from" value="#A00000">
+                    </label>
+                    <label class="form-row">
+                        <span>Gradient bitiş:</span>
+                        <input type="color" id="overlay-footer-grad-to" value="#5C0A0A">
+                    </label>
+                    <label class="form-row">
+                        <span>Metin rengi:</span>
+                        <input type="color" id="overlay-footer-color" value="#F5D98A">
+                    </label>
+                    <label class="form-row">
+                        <span>Metin boyutu:</span>
+                        <input type="range" id="overlay-footer-size" min="1" max="10" step="0.1" value="2.5">
+                        <span id="overlay-footer-size-value">2.5%</span>
+                    </label>
+                    <label class="form-row">
+                        <span>Bar yüksekliği:</span>
+                        <input type="range" id="overlay-footer-height" min="3" max="20" step="0.5" value="9">
+                        <span id="overlay-footer-height-value">9%</span>
+                    </label>
+                    <label class="form-row">
+                        <span>Yazı tipi:</span>
+                        <select id="overlay-footer-font">
+                            <option value="'Georgia', 'Times New Roman', serif" selected>Serif (Georgia)</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="-apple-system, 'Segoe UI', sans-serif">Sans-serif</option>
+                            <option value="'Courier New', monospace">Courier</option>
+                        </select>
+                    </label>
+                </div>
+
+                <button id="overlay-close-btn" class="btn-primary">Kapat</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Browser Warning -->
     <div class="modal-overlay hidden" id="browser-warning">
         <div class="modal-content">
@@ -183,6 +299,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js"></script>
+    <script src="logo.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

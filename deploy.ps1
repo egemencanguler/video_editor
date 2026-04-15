@@ -1,3 +1,6 @@
+# Encode logo.png into logo.js (embedded base64) so it works on file:// without tainting the canvas
+& "$PSScriptRoot\encode-logo.ps1"
+
 # Read current build number and increment
 $buildFile = "$PSScriptRoot\build.txt"
 $build = [int](Get-Content $buildFile -Raw).Trim()

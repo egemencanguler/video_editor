@@ -13,6 +13,35 @@ const state = {
     isPlaying: false,
     playbackTime: 0,
     pixelsPerSecond: 80,
+    overlay: {
+        enabled: true,
+        backgroundColor: '#000000',
+        header: {
+            gradientFrom: '#A00000',
+            gradientTo: '#5C0A0A',
+            heightPercent: 15,
+        },
+        title: {
+            text: 'ANITKABİR DERNEĞİ',
+            color: '#F5D98A',
+            fontFamily: "'Georgia', 'Times New Roman', serif",
+            sizePercent: 3,
+            bold: true,
+        },
+        logo: {
+            image: null,
+            file: null,
+        },
+        footer: {
+            text: 'https://www.anitkabir.com.tr/',
+            color: '#F5D98A',
+            fontFamily: "'Georgia', 'Times New Roman', serif",
+            sizePercent: 2.5,
+            gradientFrom: '#A00000',
+            gradientTo: '#5C0A0A',
+            heightPercent: 9,
+        },
+    },
 };
 
 // --- DOM refs ---
@@ -72,7 +101,24 @@ function init() {
     setupPropertiesPanel();
     setupKeyboard();
     setupTimelineSeek();
+    setupOverlayUI();
+    updateOverlayToggleBtn();
+    loadDefaultLogo();
     renderFrame();
+}
+
+function loadDefaultLogo() {
+    const img = new Image();
+    img.onload = () => {
+        state.overlay.logo.image = img;
+        renderFrame();
+    };
+    img.onerror = () => {
+        console.warn('Default logo could not be loaded');
+    };
+    // Prefer embedded data URL (works on file:// without tainting the canvas).
+    // Falls back to logo.png if the embedded version is not available.
+    img.src = (typeof window !== 'undefined' && window.LOGO_DATA_URL) || 'logo.png';
 }
 
 function checkBrowserSupport() {
@@ -573,6 +619,7 @@ function setupPropertiesPanel() {
         renderFrame();
     });
 
+
     propVolume.addEventListener('input', () => {
         const track = state.audioTracks.find(t => t.id === state.selectedId);
         if (!track) return;
@@ -647,80 +694,104 @@ function renderFrame() {
     renderFrameAtTime(ctx, state.playbackTime, state.resolution.width, state.resolution.height);
 }
 
-function renderFrameAtTime(context, time, width, height) {
-    context.fillStyle = '#000';
-    context.fillRect(0, 0, width, height);
-
-    if (state.clips.length === 0) return;
-
+function findActiveClipAtTime(time) {
+    if (state.clips.length === 0) return null;
     let cumulative = 0;
     for (const clip of state.clips) {
-        if (time < cumulative + clip.duration) {
-            drawImageToCanvas(context, clip, width, height);
-            return;
-        }
+        if (time < cumulative + clip.duration) return clip;
         cumulative += clip.duration;
     }
-    // Past end — draw last frame
-    if (state.clips.length > 0) {
-        drawImageToCanvas(context, state.clips[state.clips.length - 1], width, height);
+    return state.clips[state.clips.length - 1];
+}
+
+function renderFrameAtTime(context, time, width, height) {
+    context.fillStyle = state.overlay.enabled ? state.overlay.backgroundColor : '#000';
+    context.fillRect(0, 0, width, height);
+
+    const activeClip = findActiveClipAtTime(time);
+    if (activeClip) {
+        drawImageToCanvas(context, activeClip, 0, 0, width, height);
+    }
+
+    if (state.overlay.enabled) {
+        // Bars drawn on top of the image
+        drawHeader(context, width, height);
+        const logoRect = drawLogo(context, width, height);
+        drawTitle(context, width, height, logoRect);
+        drawFooter(context, width, height);
     }
 }
 
-function drawImageToCanvas(context, clip, canvasW, canvasH) {
+function drawImageToCanvas(context, clip, areaX, areaY, areaW, areaH) {
     const img = clip.image;
     const mode = clip.scaleMode;
     let drawW, drawH, drawX, drawY;
 
     // Blur-fill: draw blurred & scaled background first, then sharp fit on top
     if (mode === 'blur-fill') {
-        drawBlurFill(context, img, canvasW, canvasH);
+        drawBlurFill(context, img, areaX, areaY, areaW, areaH);
         return;
     }
 
     // Fit modes
     if (mode === 'fit' || mode === 'fit-top' || mode === 'fit-bottom') {
-        const scale = Math.min(canvasW / img.naturalWidth, canvasH / img.naturalHeight);
+        const scale = Math.min(areaW / img.naturalWidth, areaH / img.naturalHeight);
         drawW = img.naturalWidth * scale;
         drawH = img.naturalHeight * scale;
-        drawX = (canvasW - drawW) / 2;
-        if (mode === 'fit-top') drawY = 0;
-        else if (mode === 'fit-bottom') drawY = canvasH - drawH;
-        else drawY = (canvasH - drawH) / 2;
+        drawX = areaX + (areaW - drawW) / 2;
+        if (mode === 'fit-top') drawY = areaY;
+        else if (mode === 'fit-bottom') drawY = areaY + areaH - drawH;
+        else drawY = areaY + (areaH - drawH) / 2;
     }
     // Fill modes
     else if (mode === 'fill' || mode === 'fill-top' || mode === 'fill-bottom') {
-        const scale = Math.max(canvasW / img.naturalWidth, canvasH / img.naturalHeight);
+        const scale = Math.max(areaW / img.naturalWidth, areaH / img.naturalHeight);
         drawW = img.naturalWidth * scale;
         drawH = img.naturalHeight * scale;
-        drawX = (canvasW - drawW) / 2;
-        if (mode === 'fill-top') drawY = 0;
-        else if (mode === 'fill-bottom') drawY = canvasH - drawH;
-        else drawY = (canvasH - drawH) / 2;
+        drawX = areaX + (areaW - drawW) / 2;
+        if (mode === 'fill-top') drawY = areaY;
+        else if (mode === 'fill-bottom') drawY = areaY + areaH - drawH;
+        else drawY = areaY + (areaH - drawH) / 2;
     }
     // Stretch
     else if (mode === 'stretch') {
-        drawX = 0; drawY = 0; drawW = canvasW; drawH = canvasH;
+        drawX = areaX; drawY = areaY; drawW = areaW; drawH = areaH;
     }
     // Custom
     else {
-        const baseFit = Math.min(canvasW / img.naturalWidth, canvasH / img.naturalHeight);
+        const baseFit = Math.min(areaW / img.naturalWidth, areaH / img.naturalHeight);
         const scale = baseFit * clip.customScale;
         drawW = img.naturalWidth * scale;
         drawH = img.naturalHeight * scale;
-        drawX = (canvasW - drawW) / 2;
-        drawY = (canvasH - drawH) / 2;
+        drawX = areaX + (areaW - drawW) / 2;
+        drawY = areaY + (areaH - drawH) / 2;
     }
 
-    context.drawImage(img, drawX, drawY, drawW, drawH);
+    // Clip to area so fill modes don't spill outside the window rect
+    if (mode === 'fill' || mode === 'fill-top' || mode === 'fill-bottom') {
+        context.save();
+        context.beginPath();
+        context.rect(areaX, areaY, areaW, areaH);
+        context.clip();
+        context.drawImage(img, drawX, drawY, drawW, drawH);
+        context.restore();
+    } else {
+        context.drawImage(img, drawX, drawY, drawW, drawH);
+    }
 }
 
-function drawBlurFill(context, img, canvasW, canvasH) {
-    const bgScale = Math.max(canvasW / img.naturalWidth, canvasH / img.naturalHeight);
+function drawBlurFill(context, img, areaX, areaY, areaW, areaH) {
+    const bgScale = Math.max(areaW / img.naturalWidth, areaH / img.naturalHeight);
     const bgW = img.naturalWidth * bgScale;
     const bgH = img.naturalHeight * bgScale;
-    const bgX = (canvasW - bgW) / 2;
-    const bgY = (canvasH - bgH) / 2;
+    const bgX = areaX + (areaW - bgW) / 2;
+    const bgY = areaY + (areaH - bgH) / 2;
+
+    // Clip to area so blur doesn't spill
+    context.save();
+    context.beginPath();
+    context.rect(areaX, areaY, areaW, areaH);
+    context.clip();
 
     // Try CSS filter blur (works on regular canvas, may not on OffscreenCanvas)
     const supportsFilter = typeof context.filter !== 'undefined';
@@ -732,29 +803,259 @@ function drawBlurFill(context, img, canvasW, canvasH) {
     } else {
         // Fallback: downscale repeatedly for a blur approximation
         const tmpCanvas = document.createElement('canvas');
-        const smallW = Math.max(1, Math.round(canvasW / 16));
-        const smallH = Math.max(1, Math.round(canvasH / 16));
+        const smallW = Math.max(1, Math.round(areaW / 16));
+        const smallH = Math.max(1, Math.round(areaH / 16));
         tmpCanvas.width = smallW;
         tmpCanvas.height = smallH;
         const tmpCtx = tmpCanvas.getContext('2d');
-        // Draw image tiny (effectively blurs when scaled back up)
-        tmpCtx.drawImage(img, bgX / 16, bgY / 16, bgW / 16, bgH / 16);
-        // Draw darkened
+        tmpCtx.drawImage(img, (bgX - areaX) / 16, (bgY - areaY) / 16, bgW / 16, bgH / 16);
         tmpCtx.fillStyle = 'rgba(0,0,0,0.5)';
         tmpCtx.fillRect(0, 0, smallW, smallH);
-        // Scale back up with smoothing
         context.imageSmoothingEnabled = true;
         context.imageSmoothingQuality = 'high';
-        context.drawImage(tmpCanvas, 0, 0, canvasW, canvasH);
+        context.drawImage(tmpCanvas, areaX, areaY, areaW, areaH);
     }
 
     // Foreground: fit-center, sharp
-    const fgScale = Math.min(canvasW / img.naturalWidth, canvasH / img.naturalHeight);
+    const fgScale = Math.min(areaW / img.naturalWidth, areaH / img.naturalHeight);
     const drawW = img.naturalWidth * fgScale;
     const drawH = img.naturalHeight * fgScale;
-    const drawX = (canvasW - drawW) / 2;
-    const drawY = (canvasH - drawH) / 2;
+    const drawX = areaX + (areaW - drawW) / 2;
+    const drawY = areaY + (areaH - drawH) / 2;
     context.drawImage(img, drawX, drawY, drawW, drawH);
+
+    context.restore();
+}
+
+// ============================================================
+// Overlay Rendering (viewport, logo, footer)
+// ============================================================
+function drawHeader(context, canvasW, canvasH) {
+    const header = state.overlay.header;
+    const hh = canvasH * (header.heightPercent / 100);
+    const grad = context.createLinearGradient(0, 0, 0, hh);
+    grad.addColorStop(0, header.gradientFrom);
+    grad.addColorStop(1, header.gradientTo);
+    context.fillStyle = grad;
+    context.fillRect(0, 0, canvasW, hh);
+}
+
+function drawLogo(context, canvasW, canvasH) {
+    const logo = state.overlay.logo;
+    if (!logo.image) return null;
+    const img = logo.image;
+    const headerH = canvasH * (state.overlay.header.heightPercent / 100);
+
+    // Logo always fills the full header height, aligned to top-left corner
+    const targetH = headerH;
+    const aspectRatio = img.naturalWidth / img.naturalHeight;
+    const targetW = targetH * aspectRatio;
+
+    context.drawImage(img, 0, 0, targetW, targetH);
+    return { x: 0, y: 0, w: targetW, h: targetH };
+}
+
+function drawTitle(context, canvasW, canvasH, logoRect) {
+    const title = state.overlay.title;
+    if (!title.text) return;
+    const headerH = canvasH * (state.overlay.header.heightPercent / 100);
+    const fontSize = canvasH * (title.sizePercent / 100);
+    // Small breathing room between logo and title, and at the right edge
+    const gap = canvasW * 0.02;
+
+    context.save();
+    const weight = title.bold ? 'bold ' : '';
+    context.font = `${weight}${fontSize}px ${title.fontFamily}`;
+    context.fillStyle = title.color;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+
+    // Available region = right of logo to right edge of canvas
+    const logoRight = logoRect ? logoRect.w : 0;
+    const availableLeft = logoRight + gap;
+    const availableRight = canvasW - gap;
+    const centerX = (availableLeft + availableRight) / 2;
+    const centerY = headerH / 2;
+
+    context.fillText(title.text, centerX, centerY);
+    context.restore();
+}
+
+function drawFooter(context, canvasW, canvasH) {
+    const footer = state.overlay.footer;
+    const fh = canvasH * (footer.heightPercent / 100);
+    const fy = canvasH - fh;
+
+    // Gradient bar
+    const grad = context.createLinearGradient(0, fy, 0, canvasH);
+    grad.addColorStop(0, footer.gradientFrom);
+    grad.addColorStop(1, footer.gradientTo);
+    context.fillStyle = grad;
+    context.fillRect(0, fy, canvasW, fh);
+
+    // Footer text centered in the bar
+    if (footer.text) {
+        const fontSize = canvasH * (footer.sizePercent / 100);
+        context.save();
+        context.font = `${fontSize}px ${footer.fontFamily}`;
+        context.fillStyle = footer.color;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(footer.text, canvasW / 2, fy + fh / 2);
+        context.restore();
+    }
+}
+
+// ============================================================
+// Overlay UI (modal controls)
+// ============================================================
+function setupOverlayUI() {
+    const openBtn = $('#overlay-btn');
+    const modal = $('#overlay-modal');
+    const closeBtn = $('#overlay-close-btn');
+    if (!openBtn || !modal) return;
+
+    openBtn.addEventListener('click', () => {
+        syncOverlayForm();
+        modal.classList.remove('hidden');
+    });
+    closeBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    // Quick toolbar toggle
+    const toggleBtn = $('#overlay-toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        state.overlay.enabled = !state.overlay.enabled;
+        updateOverlayToggleBtn();
+        renderFrame();
+    });
+
+    // Enabled toggle (inside modal)
+    $('#overlay-enabled').addEventListener('change', (e) => {
+        state.overlay.enabled = e.target.checked;
+        updateOverlayToggleBtn();
+        renderFrame();
+    });
+
+    // Header bar
+    $('#overlay-header-grad-from').addEventListener('input', (e) => {
+        state.overlay.header.gradientFrom = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-header-grad-to').addEventListener('input', (e) => {
+        state.overlay.header.gradientTo = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-header-height').addEventListener('input', (e) => {
+        state.overlay.header.heightPercent = parseFloat(e.target.value);
+        $('#overlay-header-height-value').textContent = e.target.value + '%';
+        renderFrame();
+    });
+
+    // Title
+    $('#overlay-title-text').addEventListener('input', (e) => {
+        state.overlay.title.text = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-title-color').addEventListener('input', (e) => {
+        state.overlay.title.color = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-title-size').addEventListener('input', (e) => {
+        state.overlay.title.sizePercent = parseFloat(e.target.value);
+        $('#overlay-title-size-value').textContent = e.target.value + '%';
+        renderFrame();
+    });
+    $('#overlay-title-font').addEventListener('change', (e) => {
+        state.overlay.title.fontFamily = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-title-bold').addEventListener('change', (e) => {
+        state.overlay.title.bold = e.target.checked;
+        renderFrame();
+    });
+
+    // Logo
+    $('#overlay-logo-file').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+        });
+        state.overlay.logo.image = img;
+        state.overlay.logo.file = file;
+        renderFrame();
+    });
+    // Footer
+    $('#overlay-footer-text').addEventListener('input', (e) => {
+        state.overlay.footer.text = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-footer-color').addEventListener('input', (e) => {
+        state.overlay.footer.color = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-footer-size').addEventListener('input', (e) => {
+        state.overlay.footer.sizePercent = parseFloat(e.target.value);
+        $('#overlay-footer-size-value').textContent = e.target.value + '%';
+        renderFrame();
+    });
+    $('#overlay-footer-font').addEventListener('change', (e) => {
+        state.overlay.footer.fontFamily = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-footer-grad-from').addEventListener('input', (e) => {
+        state.overlay.footer.gradientFrom = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-footer-grad-to').addEventListener('input', (e) => {
+        state.overlay.footer.gradientTo = e.target.value;
+        renderFrame();
+    });
+    $('#overlay-footer-height').addEventListener('input', (e) => {
+        state.overlay.footer.heightPercent = parseFloat(e.target.value);
+        $('#overlay-footer-height-value').textContent = e.target.value + '%';
+        renderFrame();
+    });
+}
+
+function updateOverlayToggleBtn() {
+    const btn = $('#overlay-toggle-btn');
+    if (!btn) return;
+    btn.classList.toggle('active', state.overlay.enabled);
+    const label = btn.querySelector('.toggle-label');
+    if (label) label.textContent = state.overlay.enabled ? 'Açık' : 'Kapalı';
+}
+
+function syncOverlayForm() {
+    const o = state.overlay;
+    $('#overlay-enabled').checked = o.enabled;
+
+    $('#overlay-header-grad-from').value = o.header.gradientFrom;
+    $('#overlay-header-grad-to').value = o.header.gradientTo;
+    $('#overlay-header-height').value = o.header.heightPercent;
+    $('#overlay-header-height-value').textContent = o.header.heightPercent + '%';
+
+    $('#overlay-title-text').value = o.title.text;
+    $('#overlay-title-color').value = o.title.color;
+    $('#overlay-title-size').value = o.title.sizePercent;
+    $('#overlay-title-size-value').textContent = o.title.sizePercent + '%';
+    $('#overlay-title-font').value = o.title.fontFamily;
+    $('#overlay-title-bold').checked = o.title.bold;
+
+    $('#overlay-footer-text').value = o.footer.text;
+    $('#overlay-footer-color').value = o.footer.color;
+    $('#overlay-footer-size').value = o.footer.sizePercent;
+    $('#overlay-footer-size-value').textContent = o.footer.sizePercent + '%';
+    $('#overlay-footer-font').value = o.footer.fontFamily;
+    $('#overlay-footer-grad-from').value = o.footer.gradientFrom;
+    $('#overlay-footer-grad-to').value = o.footer.gradientTo;
+    $('#overlay-footer-height').value = o.footer.heightPercent;
+    $('#overlay-footer-height-value').textContent = o.footer.heightPercent + '%';
 }
 
 // ============================================================

@@ -124,6 +124,79 @@ body {
     background: #a93226;
 }
 
+/* === Button Group === */
+.btn-group {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid #533483;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #0f3460;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-group-item {
+    background: #0f3460;
+    color: #eee;
+    border: none;
+    padding: 6px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.btn-group-item:hover {
+    background: #16213e;
+}
+
+.btn-group-main {
+    border-right: 1px solid #533483;
+    font-weight: 500;
+}
+
+.btn-group-toggle {
+    padding: 6px 12px;
+    min-width: 84px;
+    justify-content: center;
+    color: #888;
+}
+
+.btn-group-toggle .toggle-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #666;
+    transition: background 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-group-toggle .toggle-label {
+    font-size: 12px;
+    letter-spacing: 0.3px;
+}
+
+.btn-group-toggle.active {
+    background: #1e4d2b;
+    color: #b9f0c7;
+}
+
+.btn-group-toggle.active:hover {
+    background: #16391f;
+}
+
+.btn-group-toggle.active .toggle-dot {
+    background: #4caf50;
+    box-shadow: 0 0 6px #4caf50;
+}
+
+/* When toggle is active, give the main button a subtle accent to show the feature is on */
+.btn-group:has(.btn-group-toggle.active) {
+    border-color: #4caf50;
+}
+
 /* === Preview Area === */
 .preview-area {
     flex: 1;
@@ -677,6 +750,120 @@ body {
 
 .modal-content button {
     margin-top: 16px;
+}
+
+/* === Overlay Modal (wide) === */
+.modal-wide {
+    max-width: 560px !important;
+    text-align: left !important;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-wide h3 {
+    text-align: center;
+    color: #D4AF37;
+    font-family: 'Georgia', serif;
+    border-bottom: 1px solid #533483;
+    padding-bottom: 12px;
+}
+
+.overlay-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.overlay-form .form-section {
+    background: #0d1b36;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #533483;
+}
+
+.overlay-form .form-section h4 {
+    color: #D4AF37;
+    font-family: 'Georgia', serif;
+    font-size: 14px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.overlay-form .form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #ccc;
+}
+
+.overlay-form .form-row > span:first-child {
+    flex: 0 0 120px;
+    color: #aaa;
+}
+
+.overlay-form .form-row input[type="text"],
+.overlay-form .form-row select {
+    flex: 1;
+    background: #16213e;
+    color: #eee;
+    border: 1px solid #533483;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 13px;
+}
+
+.overlay-form .form-row input[type="color"] {
+    width: 40px;
+    height: 28px;
+    border: 1px solid #533483;
+    border-radius: 4px;
+    background: #16213e;
+    cursor: pointer;
+    padding: 0;
+}
+
+.overlay-form .form-row input[type="range"] {
+    flex: 1;
+    accent-color: #D4AF37;
+}
+
+.overlay-form .form-row input[type="file"] {
+    flex: 1;
+    font-size: 12px;
+    color: #aaa;
+}
+
+.overlay-form .form-hint {
+    font-size: 11px;
+    color: #777;
+    font-style: italic;
+    margin: 4px 0 0;
+    line-height: 1.4;
+}
+
+.overlay-form .checkbox-row {
+    justify-content: flex-start;
+}
+
+.overlay-form .checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #D4AF37;
+    cursor: pointer;
+}
+
+.overlay-form .checkbox-row span {
+    flex: none !important;
+    color: #eee !important;
+}
+
+.overlay-form #overlay-close-btn {
+    align-self: center;
+    padding: 10px 28px;
+    margin-top: 8px;
 }
 
 /* === Utilities === */
