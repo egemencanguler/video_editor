@@ -91,7 +91,7 @@ let playbackSourceNodes = [];
 // ============================================================
 // Initialization
 // ============================================================
-function init() {
+async function init() {
     checkBrowserSupport();
     setupDragDrop();
     setupFileInput();
@@ -102,22 +102,37 @@ function init() {
     setupKeyboard();
     setupTimelineSeek();
     setupOverlayUI();
+    setupRecorderUI();
     updateOverlayToggleBtn();
     loadDefaultLogo();
+
+    // Restore saved state (async — reads from IndexedDB)
+    if (typeof restoreState === 'function') {
+        await restoreState();
+    }
+
     renderFrame();
+
+    // Warn before closing the tab if there are unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+        if (state.clips.length > 0 || state.audioTracks.length > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 }
 
 function loadDefaultLogo() {
     const img = new Image();
     img.onload = () => {
+        // Don't overwrite if restoreState already loaded a custom logo
+        if (state.overlay.logo.image) return;
         state.overlay.logo.image = img;
         renderFrame();
     };
     img.onerror = () => {
         console.warn('Default logo could not be loaded');
     };
-    // Prefer embedded data URL (works on file:// without tainting the canvas).
-    // Falls back to logo.png if the embedded version is not available.
     img.src = (typeof window !== 'undefined' && window.LOGO_DATA_URL) || 'logo.png';
 }
 
@@ -193,6 +208,7 @@ async function handleFiles(fileList) {
     updateEmptyState();
     renderTimeline();
     renderFrame();
+    saveState();
 }
 
 async function addImageClip(file) {
@@ -440,6 +456,7 @@ function setupClipDrag(el, clip, index) {
         state.clips.splice(toIdx, 0, moved);
         renderTimeline();
         renderFrame();
+        saveState();
     });
 }
 
@@ -492,6 +509,7 @@ function setupResizeHandle(handle, clip) {
             // Full re-render now that resizing is done
             renderTimeline();
             renderFrame();
+            saveState();
         };
 
         document.addEventListener('mousemove', onMove);
@@ -601,6 +619,7 @@ function setupPropertiesPanel() {
         clip.duration = Math.max(0.1, parseFloat(propDuration.value) || 0.1);
         renderTimeline();
         updateTimeDisplay();
+        saveState();
     });
 
     propScaleMode.addEventListener('change', () => {
@@ -609,6 +628,7 @@ function setupPropertiesPanel() {
         clip.scaleMode = propScaleMode.value;
         propCustomScaleGroup.classList.toggle('hidden', clip.scaleMode !== 'custom');
         renderFrame();
+        saveState();
     });
 
     propCustomScale.addEventListener('input', () => {
@@ -617,15 +637,25 @@ function setupPropertiesPanel() {
         clip.customScale = parseInt(propCustomScale.value) / 100;
         propCustomScaleValue.textContent = propCustomScale.value + '%';
         renderFrame();
+        saveState();
     });
-
 
     propVolume.addEventListener('input', () => {
         const track = state.audioTracks.find(t => t.id === state.selectedId);
         if (!track) return;
         track.volume = parseInt(propVolume.value) / 100;
         propVolumeValue.textContent = propVolume.value + '%';
+        saveState();
     });
+
+    const editAudioBtn = $('#prop-edit-audio-btn');
+    if (editAudioBtn) {
+        editAudioBtn.addEventListener('click', () => {
+            if (state.selectedType === 'audio' && state.selectedId) {
+                openAudioEditor(state.selectedId);
+            }
+        });
+    }
 
     propDeleteBtn.addEventListener('click', () => {
         if (state.selectedType === 'clip') {
@@ -637,6 +667,7 @@ function setupPropertiesPanel() {
         updateEmptyState();
         renderTimeline();
         renderFrame();
+        saveState();
     });
 }
 
@@ -665,6 +696,7 @@ function setupResolutionControls() {
 
     $('#fps-select').addEventListener('change', (e) => {
         state.fps = parseInt(e.target.value);
+        saveState();
     });
 }
 
@@ -674,6 +706,7 @@ function setResolution(w, h) {
     previewCanvas.height = h;
     $('#resolution-badge').textContent = `${w} x ${h}`;
     renderFrame();
+    saveState();
 }
 
 // ============================================================
@@ -921,6 +954,7 @@ function setupOverlayUI() {
     });
     closeBtn.addEventListener('click', () => {
         modal.classList.add('hidden');
+        saveState();
     });
 
     // Quick toolbar toggle
@@ -929,6 +963,7 @@ function setupOverlayUI() {
         state.overlay.enabled = !state.overlay.enabled;
         updateOverlayToggleBtn();
         renderFrame();
+        saveState();
     });
 
     // Enabled toggle (inside modal)
@@ -989,6 +1024,7 @@ function setupOverlayUI() {
         state.overlay.logo.image = img;
         state.overlay.logo.file = file;
         renderFrame();
+        saveState();
     });
     // Footer
     $('#overlay-footer-text').addEventListener('input', (e) => {
@@ -1520,4 +1556,4 @@ function escapeHtml(str) {
 // ============================================================
 // Start
 // ============================================================
-init();
+init().catch(e => console.error('Init failed:', e));

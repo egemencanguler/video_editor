@@ -6,6 +6,9 @@ build.txt
 # logo.png is embedded into logo.js at deploy time, no need to upload the raw file
 logo.png
 
+# Plan files
+PLAN-*.md
+
 # Dotfiles and local stuff
 .git
 .claude

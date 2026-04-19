@@ -866,6 +866,149 @@ body {
     margin-top: 8px;
 }
 
+/* === Recorder === */
+.btn-record {
+    color: #e94560;
+}
+
+.btn-record-sm {
+    color: #e94560;
+    font-size: 12px;
+}
+
+.modal-recorder {
+    max-width: 700px !important;
+    width: 95% !important;
+    text-align: center !important;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.recorder-state {
+    padding: 16px 0;
+}
+
+.recorder-big-btn-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px 0;
+}
+
+.recorder-big-btn-wrap p {
+    color: #888;
+    font-size: 14px;
+}
+
+.recorder-hint {
+    font-size: 11px !important;
+    color: #555 !important;
+    font-style: italic;
+    max-width: 300px;
+    text-align: center;
+}
+
+.recorder-big-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #c0392b;
+    border: 4px solid #e94560;
+    color: #fff;
+    font-size: 36px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.recorder-big-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+}
+
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+    font-size: 16px;
+    color: #eee;
+}
+
+.recording-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #e94560;
+    animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.recorder-timer {
+    font-variant-numeric: tabular-nums;
+    font-size: 24px;
+    font-weight: 600;
+    color: #e94560;
+}
+
+.recorder-stop-btn {
+    padding: 12px 32px;
+    font-size: 16px;
+}
+
+.recorder-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.recorder-divider {
+    width: 1px;
+    height: 24px;
+    background: #333;
+    margin: 0 4px;
+}
+
+.recorder-toolbar button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.recorder-waveform-container {
+    background: #0d1b36;
+    border: 1px solid #533483;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 12px 0;
+    height: 180px;
+    cursor: crosshair;
+}
+
+.recorder-waveform-container canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.recorder-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0 0;
+    border-top: 1px solid #0f3460;
+    margin-top: 8px;
+}
+
 /* === Utilities === */
 .hidden {
     display: none !important;

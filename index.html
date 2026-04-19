@@ -78,6 +78,7 @@
             <span id="time-display" class="time-display">0:00.0 / 0:00.0</span>
         </div>
         <div class="transport-right">
+            <button id="record-btn" class="btn-secondary btn-record">&#9679; Ses Kaydet</button>
             <button id="add-files-btn" class="btn-secondary">+ Dosya Ekle</button>
             <input type="file" id="file-input" multiple accept="image/*,audio/*,.mp3,.wav,.ogg,.aac,.flac,.m4a,.avif,.webp,.bmp,.svg" hidden>
         </div>
@@ -154,6 +155,7 @@
                     <input type="range" id="prop-volume" min="0" max="100" value="100">
                     <span id="prop-volume-value">100%</span>
                 </label>
+                <button id="prop-edit-audio-btn" class="btn-secondary">Düzenle</button>
             </div>
             <button id="prop-delete-btn" class="btn-danger">Sil</button>
         </div>
@@ -288,6 +290,54 @@
         </div>
     </div>
 
+    <!-- Recorder / Audio Editor Modal -->
+    <div class="modal-overlay hidden" id="recorder-modal">
+        <div class="modal-content modal-recorder">
+            <h3>Ses Kaydedici</h3>
+
+            <!-- State A: Ready to record -->
+            <div id="recorder-state-a" class="recorder-state">
+                <div class="recorder-big-btn-wrap">
+                    <button id="recorder-record-btn" class="recorder-big-btn">&#9679;</button>
+                    <p>Kaydetmek için tıklayın</p>
+                    <p class="recorder-hint">Kayıt tamamlandığında ses otomatik olarak zaman çizelgesine eklenecek</p>
+                </div>
+            </div>
+
+            <!-- State B: Recording active -->
+            <div id="recorder-state-b" class="recorder-state hidden">
+                <div class="recording-indicator">
+                    <span class="recording-dot"></span>
+                    <span>Kaydediliyor...</span>
+                    <span id="recorder-timer" class="recorder-timer">0:00.0</span>
+                </div>
+                <button id="recorder-stop-btn" class="btn-danger recorder-stop-btn">&#9632; Durdur ve Ekle</button>
+            </div>
+
+            <!-- State C: Waveform Editor (opened from timeline) -->
+            <div id="recorder-state-c" class="recorder-state hidden">
+                <div class="recorder-toolbar">
+                    <button id="recorder-play-btn" class="btn-secondary">&#9654; Oynat</button>
+                    <button id="recorder-play-sel-btn" class="btn-secondary" disabled>&#9654; Seçimi Oynat</button>
+                    <button id="recorder-stop-play-btn" class="btn-secondary">&#9632;</button>
+                    <span class="recorder-divider"></span>
+                    <button id="recorder-trim-btn" class="btn-secondary" disabled>Kırp</button>
+                    <button id="recorder-cut-btn" class="btn-secondary" disabled>Kes</button>
+                    <button id="recorder-undo-btn" class="btn-secondary" disabled>&#8617; Geri Al</button>
+                </div>
+                <div class="recorder-waveform-container">
+                    <canvas id="recorder-waveform"></canvas>
+                </div>
+            </div>
+
+            <!-- Footer buttons -->
+            <div class="recorder-footer">
+                <button id="recorder-close-btn" class="btn-secondary">Kapat</button>
+                <button id="recorder-save-btn" class="btn-primary" disabled>Kaydet</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Browser Warning -->
     <div class="modal-overlay hidden" id="browser-warning">
         <div class="modal-content">
@@ -300,6 +350,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js"></script>
     <script src="logo.js"></script>
+    <script src="state-persistence.js"></script>
+    <script src="audio-recorder.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
